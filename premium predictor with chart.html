@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Premium Predictor with Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        healthBlue: '#1E3A8A',
+                        healthTeal: '#0D9488',
+                        healthGreen: '#15803D',
+                        healthRed: '#B91C1C',
+                        healthPurple: '#7E22CE',
+                        healthOrange: '#F97316'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1E3A8A 0%, #0D9488 100%);
+        }
+        .bmi-gauge {
+            position: relative;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bmi-gauge-fill {
+            position: absolute;
+            height: 100%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .premium-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .premium-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .data-card {
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        .data-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="gradient-bg text-white py-12 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-4xl font-bold mb-4">Healthcare Premium Predictor with Analytics</h1>
+            <p class="text-xl opacity-90">Calculate your BMI, estimate health insurance premium, and analyze your health data</p>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-8 -mt-10">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="grid md:grid-cols-2 gap-8 p-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-healthBlue mb-6">Your Health Profile</h2>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label for="height" class="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                            <div class="relative">
+                                <input type="range" id="height" min="140" max="220" value="170" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="heightValue" class="text-lg font-semibold text-healthBlue absolute -top-6 right-0">170 cm</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <div class="relative">
+                                <input type="range" id="weight" min="40" max="150" value="70" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="weightValue" class="text-lg font-semibold text-healthBlue absolute -top-6 right-0">70 kg</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                            <div class="relative">
+                                <input type="range" id="age" min="18" max="80" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="ageValue" class="text-lg font-semibold text-healthBlue absolute -top-6 right-0">30 years</span>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4">
+                            <button id="calculateBtn" class="w-full bg-healthTeal hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                                <i class="fas fa-calculator mr-2"></i> Calculate BMI & Premium
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h2 class="text-2xl font-bold text-healthBlue mb-6">Your Results</h2>
+                    
+                    <div class="bg-gray-50 rounded-lg p-6 space-y-6">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium text-gray-700">BMI Score</span>
+                                <span id="bmiValue" class="text-xl font-bold text-healthBlue">--</span>
+                            </div>
+                            <div class="bmi-gauge bg-gray-200">
+                                <div id="bmiGaugeFill" class="bmi-gauge-fill" style="width: 0%; background-color: #ccc;"></div>
+                            </div>
+                            <div class="flex justify-between text-xs mt-1">
+                                <span>Underweight</span>
+                                <span>Normal</span>
+                                <span>Overweight</span>
+                                <span>Obese</span>
+                            </div>
+                            <p id="bmiCategory" class="text-sm mt-2 text-gray-600">Enter your details to calculate BMI</p>
+                        </div>
+                        
+                        <div class="pt-4">
+                            <h3 class="font-medium text-gray-700 mb-3">BMI Health Risk Assessment</h3>
+                            <div id="bmiRisks" class="text-sm space-y-2">
+                                <div class="flex items-start">
+                                    <i class="fas fa-info-circle text-healthTeal mt-1 mr-2"></i>
+                                    <span>BMI provides a simple numeric measure of body fatness for most people.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="premiumResults" class="hidden mt-10">
+            <h2 class="text-2xl font-bold text-healthBlue mb-6">Premium Estimation</h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="premium-card bg-white rounded-xl shadow-md p-6 border-l-4 border-healthGreen">
+                    <h3 class="font-bold text-lg text-gray-800 mb-2">Basic Plan</h3>
+                    <p class="text-gray-600 text-sm mb-4">Essential coverage for routine healthcare needs</p>
+                    <div class="flex items-end mb-2">
+                        <span class="text-3xl font-bold text-healthGreen" id="basicPremium">$120</span>
+                        <span class="text-gray-500 ml-1">/month</span>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                        <li class="flex items-center"><i class="fas fa-check text-healthGreen mr-2"></i> Doctor visits</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthGreen mr-2"></i> Basic lab tests</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthGreen mr-2"></i> Generic medications</li>
+                    </ul>
+                    <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-300">
+                        Learn More
+                    </button>
+                </div>
+                
+                <div class="premium-card bg-white rounded-xl shadow-md p-6 border-l-4 border-healthTeal transform scale-105">
+                    <div class="absolute top-0 right-0 bg-healthTeal text-white text-xs font-bold px-2 py-1 rounded-bl-lg">RECOMMENDED</div>
+                    <h3 class="font-bold text-lg text-gray-800 mb-2">Standard Plan</h3>
+                    <p class="text-gray-600 text-sm mb-4">Comprehensive coverage for most healthcare needs</p>
+                    <div class="flex items-end mb-2">
+                        <span class="text-3xl font-bold text-healthTeal" id="standardPremium">$180</span>
+                        <span class="text-gray-500 ml-1">/month</span>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                        <li class="flex items-center"><i class="fas fa-check text-healthTeal mr-2"></i> All Basic Plan benefits</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthTeal mr-2"></i> Specialist consultations</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthTeal mr-2"></i> Advanced diagnostics</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthTeal mr-2"></i> Brand-name medications</li>
+                    </ul>
+                    <button class="w-full bg-healthTeal hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300">
+                        Get Quote
+                    </button>
+                </div>
+                
+                <div class="premium-card bg-white rounded-xl shadow-md p-6 border-l-4 border-healthBlue">
+                    <h3 class="font-bold text-lg text-gray-800 mb-2">Premium Plan</h3>
+                    <p class="text-gray-600 text-sm mb-4">Extensive coverage for all healthcare needs</p>
+                    <div class="flex items-end mb-2">
+                        <span class="text-3xl font-bold text-healthBlue" id="premiumPremium">$250</span>
+                        <span class="text-gray-500 ml-1">/month</span>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                        <li class="flex items-center"><i class="fas fa-check text-healthBlue mr-2"></i> All Standard Plan benefits</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthBlue mr-2"></i> Hospitalization coverage</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthBlue mr-2"></i> Emergency services</li>
+                        <li class="flex items-center"><i class="fas fa-check text-healthBlue mr-2"></i> Alternative therapies</li>
+                    </ul>
+                    <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-300">
+                        Learn More
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-8 bg-white rounded-xl shadow-md p-6">
+                <h3 class="font-bold text-lg text-healthBlue mb-4">How Your Premium is Calculated</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Factors Considered:</h4>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li class="flex items-start">
+                                <i class="fas fa-weight text-healthTeal mt-1 mr-2"></i>
+                                <span><strong>BMI:</strong> Higher BMI may indicate higher health risks</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-birthday-cake text-healthTeal mt-1 mr-2"></i>
+                                <span><strong>Age:</strong> Premiums typically increase with age</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-chart-line text-healthTeal mt-1 mr-2"></i>
+                                <span><strong>Health Risks:</strong> Based on statistical health data</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Ways to Lower Your Premium:</h4>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li class="flex items-start">
+                                <i class="fas fa-utensils text-healthGreen mt-1 mr-2"></i>
+                                <span>Maintain a healthy diet and exercise routine</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-smoking-ban text-healthRed mt-1 mr-2"></i>
+                                <span>Avoid smoking and excessive alcohol consumption</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-heartbeat text-healthGreen mt-1 mr-2"></i>
+                                <span>Regular health check-ups and preventive care</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Analytics Section -->
+            <div class="mt-10">
+                <h2 class="text-2xl font-bold text-healthBlue mb-6">Health Data Analytics</h2>
+                
+                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                    <div class="data-card bg-white rounded-lg p-6 border-l-4 border-healthPurple">
+                        <h3 class="font-bold text-lg text-gray-800 mb-4">Your Health Metrics</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-sm text-gray-500">BMI Score</p>
+                                <p id="analyticsBmi" class="text-xl font-bold text-healthPurple">--</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-sm text-gray-500">Weight Status</p>
+                                <p id="analyticsWeightStatus" class="text-xl font-bold text-healthPurple">--</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-sm text-gray-500">Age Group</p>
+                                <p id="analyticsAgeGroup" class="text-xl font-bold text-healthPurple">--</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <p class="text-sm text-gray-500">Risk Level</p>
+                                <p id="analyticsRiskLevel" class="text-xl font-bold text-healthPurple">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-card bg-white rounded-lg p-6 border-l-4 border-healthOrange">
+                        <h3 class="font-bold text-lg text-gray-800 mb-4">Premium Comparison</h3>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="bg-gray-50 p-2 rounded-lg">
+                                <p class="text-xs text-gray-500">Your Premium</p>
+                                <p id="analyticsYourPremium" class="text-lg font-bold text-healthOrange">--</p>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded-lg">
+                                <p class="text-xs text-gray-500">Avg. Normal BMI</p>
+                                <p id="analyticsAvgNormal" class="text-lg font-bold text-healthOrange">--</p>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded-lg">
+                                <p class="text-xs text-gray-500">Avg. Your Age</p>
+                                <p id="analyticsAvgAge" class="text-lg font-bold text-healthOrange">--</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600" id="premiumComparisonText">
+                            Enter your details to see how your premium compares to others.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h3 class="font-bold text-lg text-healthBlue mb-4">BMI Distribution Analysis</h3>
+                        <div class="chart-container">
+                            <canvas id="bmiDistributionChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600">
+                            <i class="fas fa-info-circle text-healthTeal mr-2"></i>
+                            This shows how your BMI compares to the general population distribution.
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h3 class="font-bold text-lg text-healthBlue mb-4">Premium Factors Breakdown</h3>
+                        <div class="chart-container">
+                            <canvas id="premiumFactorsChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600">
+                            <i class="fas fa-info-circle text-healthTeal mr-2"></i>
+                            This shows how different factors contribute to your premium calculation.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 bg-white rounded-xl shadow-md p-6">
+                    <h3 class="font-bold text-lg text-healthBlue mb-4">Health Improvement Suggestions</h3>
+                    <div class="grid md:grid-cols-3 gap-4" id="healthSuggestions">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+ // Update slider values in real-time
+ document.getElementById('height').addEventListener('input', function() {
+    document.getElementById('heightValue').textContent = this.value + ' cm';
+});
+
+document.getElementById('weight').addEventListener('input', function() {
+    document.getElementById('weightValue').textContent = this.value + ' kg';
+});
+
+document.getElementById('age').addEventListener('input', function() {
+    document.getElementById('ageValue').textContent = this.value + ' years';
+});
+
+// Charts variables
+let bmiDistributionChart;
+let premiumFactorsChart;
+
+// Calculate BMI and premium
+document.getElementById('calculateBtn').addEventListener('click', function() {
+    const height = parseFloat(document.getElementById('height').value) / 100; // convert to meters
+    const weight = parseFloat(document.getElementById('weight').value);
+    const age = parseInt(document.getElementById('age').value);
+    
+    // Calculate BMI
+    const bmi = weight / (height * height);
+    const roundedBMI = bmi.toFixed(1);
+    
+    // Display BMI
+    document.getElementById('bmiValue').textContent = roundedBMI;
+    document.getElementById('analyticsBmi').textContent = roundedBMI;
+    
+    // Determine BMI category and gauge color
+    let bmiCategory = '';
+    let gaugeColor = '';
+    let gaugeWidth = 0;
+    let riskLevel = '';
+    
+    if (bmi < 18.5) {
+        bmiCategory = 'Underweight';
+        gaugeColor = '#3B82F6'; // blue
+        gaugeWidth = 15;
+        riskLevel = 'Moderate';
+    } else if (bmi >= 18.5 && bmi < 25) {
+        bmiCategory = 'Normal weight';
+        gaugeColor = '#10B981'; // green
+        gaugeWidth = 50;
+        riskLevel = 'Low';
+    } else if (bmi >= 25 && bmi < 30) {
+        bmiCategory = 'Overweight';
+        gaugeColor = '#F59E0B'; // orange
+        gaugeWidth = 75;
+        riskLevel = 'High';
+    } else {
+        bmiCategory = 'Obese';
+        gaugeColor = '#EF4444'; // red
+        gaugeWidth = 100;
+        riskLevel = 'Very High';
+    }
+    
+    document.getElementById('bmiCategory').textContent = bmiCategory;
+    document.getElementById('bmiGaugeFill').style.width = gaugeWidth + '%';
+    document.getElementById('bmiGaugeFill').style.backgroundColor = gaugeColor;
+    document.getElementById('analyticsWeightStatus').textContent = bmiCategory;
+    document.getElementById('analyticsRiskLevel').textContent = riskLevel;
+    
+    // Determine age group
+    let ageGroup = '';
+    if (age < 30) ageGroup = '18-29';
+    else if (age >= 30 && age < 45) ageGroup = '30-44';
+    else if (age >= 45 && age < 60) ageGroup = '45-59';
+    else ageGroup = '60+';
+    
+    document.getElementById('analyticsAgeGroup').textContent = ageGroup;
+    
+    // Update BMI risks
+    const bmiRisks = document.getElementById('bmiRisks');
+    bmiRisks.innerHTML = '';
+    
+    let risks = [];
+    
+    if (bmi < 18.5) {
+        risks = [
+            "Increased risk of nutritional deficiencies and osteoporosis",
+            "May indicate underlying health conditions",
+            "Weakened immune system"
+        ];
+    } else if (bmi >= 18.5 && bmi < 25) {
+        risks = [
+            "Lowest risk of weight-related health problems",
+            "Maintain healthy lifestyle for continued benefits",
+            "Regular exercise recommended"
+        ];
+    } else if (bmi >= 25 && bmi < 30) {
+        risks = [
+            "Increased risk of type 2 diabetes",
+            "Higher chance of developing high blood pressure",
+            "Potential for cardiovascular diseases"
+        ];
+    } else {
+        risks = [
+            "Significantly increased risk of serious health conditions",
+            "High probability of metabolic syndrome",
+            "Greater chance of sleep apnea and joint problems"
+        ];
+    }
+    
+    risks.forEach(risk => {
+        const riskItem = document.createElement('div');
+        riskItem.className = 'flex items-start';
+        riskItem.innerHTML = `
+            <i class="fas ${bmi < 25 ? 'fa-check-circle text-healthGreen' : 'fa-exclamation-triangle text-healthRed'} mt-1 mr-2"></i>
+            <span>${risk}</span>
+        `;
+        bmiRisks.appendChild(riskItem);
+    });
+    
+    // Calculate premium based on BMI and age
+    const basePremiumBasic = 100;
+    const basePremiumStandard = 150;
+    const basePremiumPremium = 220;
+    
+    // BMI factor (higher BMI = higher premium)
+    let bmiFactor = 1;
+    if (bmi < 18.5) bmiFactor = 1.1;  // underweight
+    else if (bmi >= 18.5 && bmi < 25) bmiFactor = 1.0;  // normal
+    else if (bmi >= 25 && bmi < 30) bmiFactor = 1.2;  // overweight
+    else bmiFactor = 1.5;  // obese
+    
+    // Age factor (older = higher premium)
+    let ageFactor = 1;
+    if (age < 30) ageFactor = 0.9;
+    else if (age >= 30 && age < 45) ageFactor = 1.0;
+    else if (age >= 45 && age < 60) ageFactor = 1.3;
+    else ageFactor = 1.6;
+    
+    // Calculate final premiums
+    const basicPremium = Math.round(basePremiumBasic * bmiFactor * ageFactor);
+    const standardPremium = Math.round(basePremiumStandard * bmiFactor * ageFactor);
+    const premiumPremium = Math.round(basePremiumPremium * bmiFactor * ageFactor);
+    
+    // Display premiums
+    document.getElementById('basicPremium').textContent = '$' + basicPremium;
+    document.getElementById('standardPremium').textContent = '$' + standardPremium;
+    document.getElementById('premiumPremium').textContent = '$' + premiumPremium;
+    
+    // Update analytics
+    document.getElementById('analyticsYourPremium').textContent = '$' + standardPremium;
+    
+    // Calculate comparison premiums (simulated data)
+    const avgNormalPremium = Math.round(basePremiumStandard * 1.0 * (age < 30 ? 0.9 : age >= 30 && age < 45 ? 1.0 : age >= 45 && age < 60 ? 1.3 : 1.6));
+    const avgAgePremium = Math.round(basePremiumStandard * (bmi < 18.5 ? 1.1 : bmi >= 18.5 && bmi < 25 ? 1.0 : bmi >= 25 && bmi < 30 ? 1.2 : 1.5) * 1.0);
+    
+    document.getElementById('analyticsAvgNormal').textContent = '$' + avgNormalPremium;
+    document.getElementById('analyticsAvgAge').textContent = '$' + avgAgePremium;
+    
+    // Update comparison text
+    let comparisonText = '';
+    if (standardPremium < avgNormalPremium && standardPremium < avgAgePremium) {
+        comparisonText = `Your premium is lower than average for both your BMI category (${bmiCategory}) and age group (${ageGroup}).`;
+    } else if (standardPremium > avgNormalPremium && standardPremium > avgAgePremium) {
+        comparisonText = `Your premium is higher than average for both your BMI category (${bmiCategory}) and age group (${ageGroup}). Consider lifestyle changes to improve your health metrics.`;
+    } else {
+        comparisonText = `Your premium is typical for your combination of BMI category (${bmiCategory}) and age group (${ageGroup}).`;
+    }
+    
+    document.getElementById('premiumComparisonText').textContent = comparisonText;
+    
+    // Generate health suggestions
+    const suggestionsContainer = document.getElementById('healthSuggestions');
+    suggestionsContainer.innerHTML = '';
+    
+    let suggestions = [];
+    
+    if (bmi < 18.5) {
+        suggestions = [
+            {
+                icon: 'fa-utensils',
+                color: 'healthGreen',
+                title: 'Nutrition Plan',
+                text: 'Increase calorie intake with nutrient-dense foods to reach a healthy weight.'
+            },
+            {
+                icon: 'fa-dumbbell',
+                color: 'healthTeal',
+                title: 'Strength Training',
+                text: 'Incorporate resistance exercises to build muscle mass and improve body composition.'
+            },
+            {
+                icon: 'fa-user-md',
+                color: 'healthBlue',
+                title: 'Medical Checkup',
+                text: 'Consult a doctor to rule out underlying causes of low weight.'
+            }
+        ];
+    } else if (bmi >= 18.5 && bmi < 25) {
+        suggestions = [
+            {
+                icon: 'fa-heartbeat',
+                color: 'healthGreen',
+                title: 'Maintain Habits',
+                text: 'Continue your healthy lifestyle with balanced diet and regular exercise.'
+            },
+            {
+                icon: 'fa-running',
+                color: 'healthTeal',
+                title: 'Cardio Fitness',
+                text: 'Aim for 150 minutes of moderate aerobic activity per week.'
+            },
+            {
+                icon: 'fa-apple-alt',
+                color: 'healthBlue',
+                title: 'Preventive Nutrition',
+                text: 'Focus on whole foods, fiber, and lean proteins to maintain health.'
+            }
+        ];
+    } else if (bmi >= 25 && bmi < 30) {
+        suggestions = [
+            {
+                icon: 'fa-weight',
+                color: 'healthGreen',
+                title: 'Weight Management',
+                text: 'Aim for gradual weight loss of 0.5-1kg per week through diet and exercise.'
+            },
+            {
+                icon: 'fa-walking',
+                color: 'healthTeal',
+                title: 'Increase Activity',
+                text: 'Add 30 minutes of daily walking to your routine to boost calorie burn.'
+            },
+            {
+                icon: 'fa-carrot',
+                color: 'healthBlue',
+                title: 'Diet Adjustment',
+                text: 'Reduce processed foods and sugary drinks, increase vegetables and lean proteins.'
+            }
+        ];
+    } else {
+        suggestions = [
+            {
+                icon: 'fa-weight',
+                color: 'healthGreen',
+                title: 'Weight Loss Plan',
+                text: 'Consider a medically supervised weight loss program for significant results.'
+            },
+            {
+                icon: 'fa-heart',
+                color: 'healthRed',
+                title: 'Health Monitoring',
+                text: 'Regularly check blood pressure, cholesterol, and blood sugar levels.'
+            },
+            {
+                icon: 'fa-users',
+                color: 'healthBlue',
+                title: 'Support Group',
+                text: 'Join a weight management support group for motivation and accountability.'
+            }
+        ];
+    }
+    
+    suggestions.forEach(suggestion => {
+        const suggestionCard = document.createElement('div');
+        suggestionCard.className = 'bg-gray-50 rounded-lg p-4';
+        suggestionCard.innerHTML = `
+            <div class="flex items-center mb-2">
+                <i class="fas ${suggestion.icon} text-${suggestion.color} text-xl mr-3"></i>
+                <h4 class="font-bold text-gray-800">${suggestion.title}</h4>
+            </div>
+            <p class="text-sm text-gray-600">${suggestion.text}</p>
+        `;
+        suggestionsContainer.appendChild(suggestionCard);
+    });
+    
+    // Create or update charts
+    updateCharts(bmi, age, standardPremium);
+    
+    // Show premium results
+    document.getElementById('premiumResults').classList.remove('hidden');
+    
+    // Scroll to results
+    document.getElementById('premiumResults').scrollIntoView({ behavior: 'smooth' });
+});
+
+function updateCharts(bmi, age, premium) {
+    const ctx1 = document.getElementById('bmiDistributionChart').getContext('2d');
+    const ctx2 = document.getElementById('premiumFactorsChart').getContext('2d');
+    
+    // Destroy existing charts if they exist
+    if (bmiDistributionChart) bmiDistributionChart.destroy();
+    if (premiumFactorsChart) premiumFactorsChart.destroy();
+    
+    // BMI Distribution Chart
+    bmiDistributionChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Underweight (<18.5)', 'Normal (18.5-24.9)', 'Overweight (25-29.9)', 'Obese (30+)'],
+            datasets: [{
+                label: 'Population Distribution %',
+                data: [5, 35, 35, 25], // Simulated data
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(16, 185, 129, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(239, 68, 68, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)',
+                    'rgba(239, 68, 68, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 40,
+                    title: {
+                        display: true,
+                        text: 'Percentage of Population'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y + '% of population';
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        line1: {
+                            type: 'line',
+                            yMin: 0,
+                            yMax: 40,
+                            xMin: bmi < 18.5 ? 0 : bmi < 25 ? 1 : bmi < 30 ? 2 : 3,
+                            xMax: bmi < 18.5 ? 0 : bmi < 25 ? 1 : bmi < 30 ? 2 : 3,
+                            borderColor: 'rgb(124, 58, 237)',
+                            borderWidth: 2,
+                            borderDash: [6, 6],
+                            label: {
+                                content: 'Your BMI Category',
+                                enabled: true,
+                                position: 'top'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Premium Factors Chart
+    let bmiContribution, ageContribution, baseContribution;
+    
+    if (bmi < 18.5) {
+        bmiContribution = 10;
+    } else if (bmi >= 18.5 && bmi < 25) {
+        bmiContribution = 0;
+    } else if (bmi >= 25 && bmi < 30) {
+        bmiContribution = 20;
+    } else {
+        bmiContribution = 50;
+    }
+    
+    if (age < 30) {
+        ageContribution = -10;
+    } else if (age >= 30 && age < 45) {
+        ageContribution = 0;
+    } else if (age >= 45 && age < 60) {
+        ageContribution = 30;
+    } else {
+        ageContribution = 60;
+    }
+    
+    baseContribution = 100 - (bmiContribution + ageContribution);
+    
+    premiumFactorsChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Base Premium', 'BMI Adjustment', 'Age Adjustment'],
+            datasets: [{
+                data: [baseContribution, bmiContribution, ageContribution],
+                backgroundColor: [
+                    'rgba(30, 58, 138, 0.7)',
+                    'rgba(13, 148, 136, 0.7)',
+                    'rgba(21, 128, 61, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(30, 58, 138, 1)',
+                    'rgba(13, 148, 136, 1)',
+                    'rgba(21, 128, 61, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${context.label}: ${percentage}% contribution`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'right',
+                }
+            }
+        }
+    });
+}
+</script>
+</body>
+</html>
